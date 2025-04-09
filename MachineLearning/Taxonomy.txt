@@ -1,0 +1,24 @@
+0 - Adult
+1 - Art & Design
+2 - Software Dev.
+3 - Crime & Law
+4 - Education & Jobs
+5 - Hardware
+6 - Entertainment
+7 - Social Life
+8 - Fashion & Beauty
+9 - Finance & Business
+10 - Food & Dining
+11 - Games
+12 - Health
+13 - History
+14 - Home & Hobbies
+15 - Industrial
+16 - Literature
+17 - Politics
+18 - Religion
+19 - Science & Tech.
+20 - Software
+21 - Sports & Fitness
+22 - Transportation
+23 - Travel
