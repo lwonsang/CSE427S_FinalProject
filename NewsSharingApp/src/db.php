@@ -1,8 +1,8 @@
 <?php
-$host = 'localhost';
-$db = 'cse427';
-$user = 'wustl_inst';
-$pass = 'wustl_pass';
+$host = getenv('DB_HOST');
+$db = getenv('DB_NAME');
+$user = getenv('DB_USER');
+$pass = getenv('DB_PASS');
 
 try {
     $pdo = new PDO("mysql:host=$host;dbname=$db", $user, $pass);

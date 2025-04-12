@@ -1,2 +1,3 @@
-pip install torch
-pip install transformers
+torch
+transformers
+flask

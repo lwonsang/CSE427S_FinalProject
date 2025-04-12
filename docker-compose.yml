@@ -1,0 +1,30 @@
+services:
+  web:
+    build: ./NewsSharingApp
+    ports:
+      - "8090:80"
+    depends_on:
+      - db
+    env_file:
+      - ./NewsSharingApp/.env
+
+  db:
+    image: mysql:8.0
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_DATABASE: database
+      MYSQL_USER: username
+      MYSQL_PASSWORD: password
+    volumes:
+      - db-data:/var/lib/mysql
+      - ./mysql:/docker-entrypoint-initdb.d
+
+  ml:
+    build: ./MachineLearning
+    volumes:
+      - ./MachineLearning:/app
+    command: python app.py
+
+volumes:
+  db-data:
+

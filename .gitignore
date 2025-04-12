@@ -1,0 +1,5 @@
+.env
+/MachineLearning/.idea/
+__pycache__/
+db_data/
+*.pyc
