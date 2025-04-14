@@ -1,0 +1,53 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: textclassify
+  labels:
+    app: textclassify-app
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: textclassify-app
+  template:
+    metadata:
+      labels:
+        app: textclassify-app
+    spec: 
+      containers:
+        - name: textclassify-app
+          image: lwonsang/cse427s_finalproject-ml
+          ports:
+            - containerPort: 8000
+          # env:
+          #   - name: AWS_SECRET_ACCESS_KEY
+          #     valueFrom:
+          #       secretKeyRef:
+          #         name: lab4app-secret
+          #         key: SecretKey
+          #   - name: AWS_ACCESS_KEY_ID
+          #     valueFrom:
+          #       secretKeyRef:
+          #         name: lab4app-secret
+          #         key: AccessID
+          #   - name: BUCKET
+          #     valueFrom:
+          #       configMapKeyRef:
+          #         name: example-configmap 
+          #         key: bucket
+
+# - name: AWS_ACCESS_KEY_ID
+#           valueFrom:
+#             secretKeyRef:
+#               name: secret-file
+#               key: AWS_ACCESS_KEY_ID
+#         - name: AWS_SECRET_ACCESS_KEY
+#           valueFrom:
+#             secretKeyRef:
+#               name: secret-file
+#               key: AWS_SECRET_ACCESS_KEY
+#         - name: BUCKET
+#           valueFrom:
+#             configMapKeyRef:
+#               name: my-configmap
+#               key: bucket
