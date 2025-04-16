@@ -2,16 +2,18 @@ import boto3
 from botocore.exceptions import NoCredentialsError, ClientError
 
 # Initialize S3 client (boto3 will use environment variables for credentials)
-s3 = boto3.client('s3')
 
-access_key_id = input("Input your Access Key ID")
-secret_access_key = input("Input your Secret Access Key.")
+
+access_key_id = input("Input your Access Key ID: ")
+secret_access_key = input("Input your Secret Access Key: ")
 
 session = boto3.Session(
     aws_access_key_id=access_key_id,
     aws_secret_access_key=secret_access_key,
     region_name='us-east-1'
 )
+
+s3 = session.client('s3')
 
 bucket_name = 'cse-427-bucket'
 
