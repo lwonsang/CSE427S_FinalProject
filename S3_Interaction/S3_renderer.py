@@ -21,7 +21,8 @@ def upload_file_to_s3(file_name, object_name=None):
     if object_name is None:
         object_name = file_name
     try:
-        s3.upload_file(file_name, bucket_name, object_name)
+        filepath = "S3_Interaction/" + file_name
+        s3.upload_file(filepath, bucket_name, object_name)
         print(f"Uploaded {file_name} to {bucket_name}/{object_name}")
     except FileNotFoundError:
         print("The file was not found")
@@ -44,13 +45,14 @@ def list_s3_objects():
 
 
 while True:
-    input = input("Type Input to see input, type List to list files")
-    if input == "Input":
-        fileName = input("type the name of the file you want to upload. make sure it is in the local S3_interaction folder.")
+    text_input = input("Type Input to see input, type List to list files, or Exit to exit: ")
+    if text_input == "Input":
+        fileName = input("type the name of the file you want to upload. make sure it is in the local S3_interaction folder.\n")
         upload_file_to_s3(fileName)
-    elif input == "List":
+    elif text_input == "List":
         list_s3_objects()
-    else:
-        print("command not identified or exit typed. make sure the first letter is uppercase and spelled correctly.")
+    elif text_input == "Exit":
         print("exiting")
         break
+    else:
+        print("command not identified or exit typed. make sure the first letter is uppercase and spelled correctly.")
