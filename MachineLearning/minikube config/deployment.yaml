@@ -1,0 +1,21 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: textclassify
+  labels:
+    app: textclassify-app
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: textclassify-app
+  template:
+    metadata:
+      labels:
+        app: textclassify-app
+    spec: 
+      containers:
+        - name: textclassify-app
+          image: lwonsang/cse427s_finalproject-ml
+          ports:
+            - containerPort: 8000
