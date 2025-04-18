@@ -19,3 +19,10 @@ Finally, run:
 docker-compose up
 
 The site will be on http://localhost:8090
+
+When you post a new story, the genre will be automatically predicted using Machine Learning, look at news.php for more information
+
+Use this command to test out ML:
+curl -X POST http://localhost:5000/predict \
+     -H "Content-Type: application/json" \
+     -d '{"input": " Insert text here"}'
