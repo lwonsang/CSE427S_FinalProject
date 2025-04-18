@@ -10,8 +10,8 @@ Docker image for ML: https://hub.docker.com/repository/docker/lwonsang/cse427s_f
 Docker image for Site: https://hub.docker.com/repository/docker/lwonsang/cse427s_finalproject-web/general
 
 using these commands:
-docker pull lwonsang/cse427_finalproject-web
-docker pull lwonsang/cse427_finalproject-ml
+docker pull lwonsang/cse427s_finalproject-web
+docker pull lwonsang/cse427s_finalproject-ml
 
 Then we need to create a .env file in the NewsSharingApp folder.
 
