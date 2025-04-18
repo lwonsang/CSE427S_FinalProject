@@ -1,3 +1,99 @@
+<?php
+session_start();
+require 'db.php';
+
+//Handle Logout requests
+if(isset($_POST["login"])){
+    header("Location: newslogin.php");
+    exit;
+}
+
+//show all new stories
+function viewStories($pdo) {
+    if(isset($_POST['genres']) && !isset($_POST['clear'])){
+        $selectedGenre = $_POST['genres'];
+        $stmt = $pdo->prepare("SELECT StoryID, Title, Body, Username, Link, Genre FROM Stories where Genre = ? ORDER BY StoryID");
+        if($stmt){
+            if($stmt->execute([$selectedGenre])){
+                $stories = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            }
+        }
+    }
+    else{
+        $stmt = $pdo->prepare("SELECT StoryID, Title, Body, Username, Link, Genre FROM Stories ORDER BY StoryID");
+        if($stmt){
+            if($stmt->execute()){
+                $stories = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            }
+        }
+    }
+    echo "<div class='storiesList'>";
+    echo "<ul>";
+    foreach ($stories as $story) {
+        if($story['Link'] != ''){
+            $link = "https://" . $story['Link'];
+        }
+        else{
+            $link = '';
+        }
+        printf("<li><strong>Title:</strong> %s <br><strong>Body:</strong> %s <br><strong>Author:</strong> %s <br><strong>Link:</strong> <a href='%s'>%s</a> <br><strong>Genre:</strong> %s",
+            htmlspecialchars($story['Title']),
+            htmlspecialchars($story['Body']),
+            htmlspecialchars($story['Username']),
+            htmlspecialchars($link),
+            htmlspecialchars($story['Link']), // Link needed twice for the output text and the link itself
+            htmlspecialchars($story['Genre'])
+        );
+
+        // Display total likes
+        $totalLikesStmt = $pdo->prepare("SELECT COUNT(*) AS totalLikes FROM Likes WHERE StoryID = ? AND Liked = TRUE");
+        $totalLikesStmt->execute([$story['StoryID']]);
+        $totalLikes = $totalLikesStmt->fetchColumn();
+
+        $totalDislikesStmt = $pdo->prepare("SELECT COUNT(*) AS totalLikes FROM Likes WHERE StoryID = ? AND Liked = FALSE");
+        $totalDislikesStmt->execute([$story['StoryID']]);
+        $totalDislikes = $totalDislikesStmt->fetchColumn();
+        echo "<p>Total Likes: " . htmlspecialchars($totalLikes - $totalDislikes) . "</p><br>";
+
+        viewComments($pdo, $story['StoryID']);
+        echo "<hr></li>";
+    }
+    echo "</ul>\n";
+    echo "</div>";
+}
+
+viewStories($pdo);
+
+function viewComments($pdo, $storyID){
+    // Prepare the query to fetch comments
+    $stmt = $pdo->prepare("SELECT CommentID, Username, Body FROM Comments WHERE StoryID = ? ORDER BY CommentID");
+
+    if($stmt){
+        if($stmt->execute([$storyID])){
+            $comments = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            
+            if($comments){
+                echo "<ul><li><strong>Comments:</strong><br><br>";
+                foreach($comments as $comment){
+                    echo "<strong>Username:</strong> " . htmlspecialchars($comment['Username']) . "<br>";
+                    echo "<strong>Body:</strong> " . htmlspecialchars($comment['Body']) . "<br>";
+                    echo "</li>\n";
+                }
+                echo "</ul>\n";
+            }
+            
+
+        } else {
+            // Display an error message if query fails
+            echo "<div style='position: absolute; top: 22vh; left: 0; right: 0; text-align: center;'>
+                Error viewing comments.
+                </div>";
+        }
+    }
+}
+
+?>
+
 <!DOCTYPE html>
 <html lang="en">
 
@@ -126,104 +222,6 @@
     <input type = "submit" name="filter" value="Filter Stories">
     <button type = "submit" name="clear">Clear Filters</button>
 </form>
-
-
-
-<?php
-session_start();
-require 'db.php';
-
-//Handle Logout requests
-if(isset($_POST["login"])){
-    header("Location: newslogin.php");
-    exit;
-}
-
-//show all new stories
-function viewStories($pdo) {
-    if(isset($_POST['genres']) && !isset($_POST['clear'])){
-        $selectedGenre = $_POST['genres'];
-        $stmt = $pdo->prepare("SELECT StoryID, Title, Body, Username, Link, Genre FROM Stories where Genre = ? ORDER BY StoryID");
-        if($stmt){
-            if($stmt->execute([$selectedGenre])){
-                $stories = $stmt->fetchAll(PDO::FETCH_ASSOC);
-            }
-        }
-    }
-    else{
-        $stmt = $pdo->prepare("SELECT StoryID, Title, Body, Username, Link, Genre FROM Stories ORDER BY StoryID");
-        if($stmt){
-            if($stmt->execute()){
-                $stories = $stmt->fetchAll(PDO::FETCH_ASSOC);
-            }
-        }
-    }
-    echo "<div class='storiesList'>";
-    echo "<ul>";
-    foreach ($stories as $story) {
-        if($story['Link'] != ''){
-            $link = "https://" . $story['Link'];
-        }
-        else{
-            $link = '';
-        }
-        printf("<li><strong>Title:</strong> %s <br><strong>Body:</strong> %s <br><strong>Author:</strong> %s <br><strong>Link:</strong> <a href='%s'>%s</a> <br><strong>Genre:</strong> %s",
-            htmlspecialchars($story['Title']),
-            htmlspecialchars($story['Body']),
-            htmlspecialchars($story['Username']),
-            htmlspecialchars($link),
-            htmlspecialchars($story['Link']), // Link needed twice for the output text and the link itself
-            htmlspecialchars($story['Genre'])
-        );
-
-        // Display total likes
-        $totalLikesStmt = $pdo->prepare("SELECT COUNT(*) AS totalLikes FROM Likes WHERE StoryID = ? AND Liked = TRUE");
-        $totalLikesStmt->execute([$story['StoryID']]);
-        $totalLikes = $totalLikesStmt->fetchColumn();
-
-        $totalDislikesStmt = $pdo->prepare("SELECT COUNT(*) AS totalLikes FROM Likes WHERE StoryID = ? AND Liked = FALSE");
-        $totalDislikesStmt->execute([$story['StoryID']]);
-        $totalDislikes = $totalDislikesStmt->fetchColumn();
-        echo "<p>Total Likes: " . htmlspecialchars($totalLikes - $totalDislikes) . "</p><br>";
-
-        viewComments($pdo, $story['StoryID']);
-        echo "<hr></li>";
-    }
-    echo "</ul>\n";
-    echo "</div>";
-}
-
-viewStories($pdo);
-
-function viewComments($pdo, $storyID){
-    // Prepare the query to fetch comments
-    $stmt = $pdo->prepare("SELECT CommentID, Username, Body FROM Comments WHERE StoryID = ? ORDER BY CommentID");
-
-    if($stmt){
-        if($stmt->execute([$storyID])){
-            $comments = $stmt->fetchAll(PDO::FETCH_ASSOC);
-            
-            if($comments){
-                echo "<ul><li><strong>Comments:</strong><br><br>";
-                foreach($comments as $comment){
-                    echo "<strong>Username:</strong> " . htmlspecialchars($comment['Username']) . "<br>";
-                    echo "<strong>Body:</strong> " . htmlspecialchars($comment['Body']) . "<br>";
-                    echo "</li>\n";
-                }
-                echo "</ul>\n";
-            }
-            
-
-        } else {
-            // Display an error message if query fails
-            echo "<div style='position: absolute; top: 22vh; left: 0; right: 0; text-align: center;'>
-                Error viewing comments.
-                </div>";
-        }
-    }
-}
-
-?>
 
 </body>
 </html>

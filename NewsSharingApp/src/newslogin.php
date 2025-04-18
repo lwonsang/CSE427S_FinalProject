@@ -15,7 +15,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['login'])) {
     // Verify the password
     if ($user && password_verify($password, $user['Password'])) {
         $_SESSION['username'] = $username; // Set session variable
-        echo "Login successful! Welcome, " . htmlspecialchars($username) . "!";
+        //echo "Login successful! Welcome, " . htmlspecialchars($username) . "!";
         header("Location: news.php");
         exit();
     } else {

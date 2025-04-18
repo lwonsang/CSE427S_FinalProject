@@ -16,41 +16,17 @@ if(isset($_POST["logout"])){
     exit;
 }
 
-//this is where ML gets used
-function getCategoryFromML($text) {
-    $data = json_encode(['input' => $text]);
-
-    //note: we are using host.docker.interal:5000/predict because we are running within Docker containers
-    // use localhost:5000/predict when testing ML locally
-    $ch = curl_init('http://host.docker.internal:5000/predict');
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-    curl_setopt($ch, CURLOPT_POSTFIELDS, $data);
-    curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
-
-    $response = curl_exec($ch);
-
-    if ($response === false) {
-        error_log("cURL Error: " . curl_error($ch));
-    } else {
-        error_log("ML Response: " . $response);
-    }
-
-    curl_close($ch);
-
-    $result = json_decode($response, true);
-    return $result['prediction'] ?? 'General';
-}
-
-
-
 // Create news stories and add it to the Stories database
 if(isset($_POST['newsTitle']) & isset($_POST['newsBody'])){
     $newsTitle = $_POST['newsTitle'];
     $newsBody = $_POST['newsBody'];
     $newsLink = $_POST['newsLink'];
-    //for now, ML is used to predict genre of new posts
-    $newsGenre = getCategoryFromML($_POST['newsBody']);
-    
+    if(isset($_POST['newsGenre'])){
+        $newsGenre = $_POST['newsGenre'];
+    }
+    else{
+        $newsGenre = 'General';
+    }
 
     $stmt = $pdo->prepare("insert into Stories (Body, Title, Username, Link, Genre) values (?, ?, ?, ?, ?)");
     if($stmt){
@@ -272,7 +248,6 @@ function viewComments($pdo, $storyID){
 }
 
 ?>
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -392,14 +367,14 @@ function viewComments($pdo, $storyID){
     Title: <input type = "text" name="newsTitle"><br>
     Body: <textarea name='newsBody' rows='4' cols='50'></textarea><br>
     Link: <input type = "text" name="newsLink"><br>
-    <!-- Genre: <select name = "newsGenre">
+    Genre: <select name = "newsGenre">
         <option value = "General"> General</option>
         <option value = "Politics"> Politics</option>
         <option value = "Business"> Business</option>
         <option value = "Sports"> Sports</option>
         <option value = "Science"> Science</option>
         <option value = "Entertainment"> Entertainment</option>
-    </select><br> -->
+    </select><br>
     <input type = "submit" value="Create New Story">
 </form>
 
