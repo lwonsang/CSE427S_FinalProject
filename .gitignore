@@ -4,3 +4,6 @@ __pycache__/
 db_data/
 *.pyc
 /NewsSharingApp/.env/
+/NewsSharingApp/src/vendor/
+/NewsSharingApp/src/S3_test.php
+/NewsSharingApp/src/S3_testupload.php

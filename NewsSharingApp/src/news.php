@@ -1,6 +1,20 @@
 <?php
 session_start();
 require 'db.php';
+require 'vendor/autoload.php';
+
+use Aws\S3\S3Client;
+use Aws\Exception\AwsException;
+
+// Set AWS credentials and region
+$s3 = new S3Client([
+    'region' => 'us-east-1',
+    'version' => 'latest',
+    'credentials' => [
+        'key' => getenv('AWS_ACCESS_KEY_ID'),
+        'secret' => getenv('AWS_SECRET_ACCESS_KEY'),
+    ],
+]);
 
 if (isset($_SESSION['username'])){ 
     $username = htmlspecialchars($_SESSION['username']); //get username from logged in user
@@ -22,7 +36,7 @@ function getCategoryFromML($text) {
 
     //note: we are using host.docker.interal:5000/predict because we are running within Docker containers
     // use localhost:5000/predict when testing ML locally
-    $ch = curl_init('http://host.docker.internal:5000/predict');
+    $ch = curl_init('http://ml:5000/predict');
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
     curl_setopt($ch, CURLOPT_POSTFIELDS, $data);
     curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
@@ -48,15 +62,44 @@ if(isset($_POST['newsTitle']) & isset($_POST['newsBody'])){
     $newsTitle = $_POST['newsTitle'];
     $newsBody = $_POST['newsBody'];
     $newsLink = $_POST['newsLink'];
-    //for now, ML is used to predict genre of new posts
+    //ML is used to predict genre of new posts
     $newsGenre = getCategoryFromML($_POST['newsBody']);
+    $hasMedia = 0;
+    if (
+        isset($_FILES['file']) &&
+        $_FILES['file']['error'] === UPLOAD_ERR_OK &&
+        is_uploaded_file($_FILES['file']['tmp_name'])
+    ) {
+        $hasMedia = 1;
+    }
     
 
-    $stmt = $pdo->prepare("insert into Stories (Body, Title, Username, Link, Genre) values (?, ?, ?, ?, ?)");
+    $stmt = $pdo->prepare("insert into Stories (Body, Title, Username, Link, Genre, HasMedia) values (?, ?, ?, ?, ?, ?)");
     if($stmt){
-        if($stmt->execute([$newsBody, $newsTitle, $username, $newsLink, $newsGenre])){
+        if($stmt->execute([$newsBody, $newsTitle, $username, $newsLink, $newsGenre, $hasMedia])){
             // echo "<div style='position: absolute; top: 22vh; left: 0; right: 0; text-align: center;'>
             //         Successfully created story.</div>";
+            if ($hasMedia && isset($_FILES['file'])) {
+                $storyID = $pdo->lastInsertId();
+                $bucket = 'cse-427-bucket';
+                $key = $username . "/" . $storyID; // S3 path
+                $sourceFile = $_FILES['file']['tmp_name'];
+            
+                try {
+                    // Upload the file
+                    $result = $s3->putObject([
+                        'Bucket' => $bucket,
+                        'Key'    => $key,
+                        'SourceFile' => $sourceFile,
+                        'ACL'    => 'private',
+                        'ContentType' => $_FILES['file']['type'],
+                    ]);
+            
+                    //echo "File uploaded successfully! S3 URL: " . $result['ObjectURL'];
+                } catch (AwsException $e) {
+                    echo "Upload failed: " . $e->getMessage();
+                }
+            }
             header("Location: news.php");
             exit();
                 
@@ -77,7 +120,7 @@ if(isset($_POST['newsTitle']) & isset($_POST['newsBody'])){
 function viewStories($pdo) {
     if(isset($_POST['genres']) && !isset($_POST['clear'])){
         $selectedGenre = $_POST['genres'];
-        $stmt = $pdo->prepare("SELECT StoryID, Title, Body, Username, Link, Genre FROM Stories where Genre = ? ORDER BY StoryID");
+        $stmt = $pdo->prepare("SELECT StoryID, Title, Body, Username, Link, Genre, HasMedia FROM Stories where Genre = ? ORDER BY StoryID");
         if($stmt){
             if($stmt->execute([$selectedGenre])){
                 $stories = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -85,7 +128,7 @@ function viewStories($pdo) {
         }
     }
     else{
-        $stmt = $pdo->prepare("SELECT StoryID, Title, Body, Username, Link, Genre FROM Stories ORDER BY StoryID");
+        $stmt = $pdo->prepare("SELECT StoryID, Title, Body, Username, Link, Genre, HasMedia FROM Stories ORDER BY StoryID");
         if($stmt){
             if($stmt->execute()){
                 $stories = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -95,20 +138,52 @@ function viewStories($pdo) {
     echo "<div class='storiesList'>";
     echo "<ul>";
     foreach ($stories as $story) {
+        $imageHtml = '';
+
+        if (!empty($story['HasMedia']) && $story['HasMedia']) {
+            $s3 = new S3Client([
+                'region' => 'us-east-1',
+                'version' => 'latest',
+                'credentials' => [
+                    'key' => getenv('AWS_ACCESS_KEY_ID'),
+                    'secret' => getenv('AWS_SECRET_ACCESS_KEY'),
+                ],
+            ]);
+
+
+            $bucket = 'cse-427-bucket';
+            $key = $story['Username'] . '/' . $story['StoryID']; 
+            $expires = '+10 minutes';
+
+            try {
+                $cmd = $s3->getCommand('GetObject', [
+                    'Bucket' => $bucket,
+                    'Key' => $key,
+                ]);
+                $request = $s3->createPresignedRequest($cmd, $expires);
+                $presignedUrl = (string) $request->getUri();
+                $imageHtml = "<img src='$presignedUrl' alt='Story image' style='max-width:300px'><br>";
+            } catch (Exception $e) {
+                $imageHtml = "<em>Image not available</em><br>";
+            }
+        }
+
         if($story['Link'] != ''){
             $link = "https://" . $story['Link'];
         }
         else{
             $link = '';
         }
-        printf("<li><strong>Title:</strong> %s <br><strong>Body:</strong> %s <br><strong>Author:</strong> %s <br><strong>Link:</strong> <a href='%s'>%s</a> <br><strong>Genre:</strong> %s</li><hr>",
+        printf("<li><strong>Title:</strong> %s <br><strong>Body:</strong> %s <br><strong>Author:</strong> %s <br><strong>Link:</strong> <a href='%s'>%s</a> <br><strong>Genre:</strong> %s <br>%s</li><hr>",
             htmlspecialchars($story['Title']),
             htmlspecialchars($story['Body']),
             htmlspecialchars($story['Username']),
             htmlspecialchars($link),
-            htmlspecialchars($story['Link']), // Link needed twice for the output text and the link itself
-            htmlspecialchars($story['Genre'])
+            htmlspecialchars($story['Link']),
+            htmlspecialchars($story['Genre']),
+            $imageHtml 
         );
+
 
         $username = $_SESSION['username'];
 
@@ -388,10 +463,11 @@ function viewComments($pdo, $storyID){
 
 
 <!-- Create a News Story -->
-<form action="news.php" method="POST" id="createStory">
+<form action="news.php" method="POST" id="createStory" enctype="multipart/form-data">
     Title: <input type = "text" name="newsTitle"><br>
     Body: <textarea name='newsBody' rows='4' cols='50'></textarea><br>
     Link: <input type = "text" name="newsLink"><br>
+    <!-- With ML we don't need the Genre selector because ML already selects the Genre for us!! -->
     <!-- Genre: <select name = "newsGenre">
         <option value = "General"> General</option>
         <option value = "Politics"> Politics</option>
@@ -400,21 +476,44 @@ function viewComments($pdo, $storyID){
         <option value = "Science"> Science</option>
         <option value = "Entertainment"> Entertainment</option>
     </select><br> -->
+    <input type="file" name="file" /><br>
+
     <input type = "submit" value="Create New Story">
 </form>
 
 <form action="news.php" method="POST" id="genreFilter">
-    Filter Genre:<select name = "genres" multiple>
-        <option value = "General"> General</option>
-        <option value = "Politics"> Politics</option>
-        <option value = "Business"> Business</option>
-        <option value = "Sports"> Sports</option>
-        <option value = "Science"> Science</option>
-        <option value = "Entertainment"> Entertainment</option>
+    Filter Genre:
+    <select name="genres" multiple>
+        <option value="General">General</option>
+        <option value="Adult">Adult</option>
+        <option value="Art & Design">Art & Design</option>
+        <option value="Software Dev">Software Dev</option>
+        <option value="Crime & Law">Crime & Law</option>
+        <option value="Education & Jobs">Education & Jobs</option>
+        <option value="Hardware">Hardware</option>
+        <option value="Entertainment">Entertainment</option>
+        <option value="Social Life">Social Life</option>
+        <option value="Fashion & Beauty">Fashion & Beauty</option>
+        <option value="Finance & Business">Finance & Business</option>
+        <option value="Food & Dining">Food & Dining</option>
+        <option value="Games">Games</option>
+        <option value="Health">Health</option>
+        <option value="History">History</option>
+        <option value="Home & Hobbies">Home & Hobbies</option>
+        <option value="Industrial">Industrial</option>
+        <option value="Literature">Literature</option>
+        <option value="Politics">Politics</option>
+        <option value="Religion">Religion</option>
+        <option value="Science & Tech.">Science & Tech.</option>
+        <option value="Software">Software</option>
+        <option value="Sports & Fitness">Sports & Fitness</option>
+        <option value="Transportation">Transportation</option>
+        <option value="Travel">Travel</option>
     </select>
-    <input type = "submit" name="filter" value="Filter Stories">
-    <button type = "submit" name="clear">Clear Filters</button>
+    <input type="submit" name="filter" value="Filter Stories">
+    <button type="submit" name="clear">Clear Filters</button>
 </form>
+
 
 </body>
 </html>

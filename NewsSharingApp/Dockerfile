@@ -9,6 +9,19 @@ COPY src/ /var/www/html
 RUN chown -R www-data:www-data /var/www/html/ && \
     chmod -R 755 /var/www/html/
 
+# Install dependencies for AWS SDK and Composer
+RUN apt-get update && apt-get install -y \
+    libpng-dev \
+    libjpeg-dev \
+    libfreetype6-dev \
+    git \
+    unzip \
+    && docker-php-ext-configure gd --with-freetype --with-jpeg \
+    && docker-php-ext-install gd
+
+# Install Composer
+RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
+
 RUN echo '<Directory /var/www/html/>\n\
     Options Indexes FollowSymLinks\n\
     AllowOverride All\n\
@@ -17,5 +30,11 @@ RUN echo '<Directory /var/www/html/>\n\
     a2enconf custom-perms
     
 WORKDIR /var/www/html
+
+# Copy your PHP files and vendor directory
+COPY . /var/www/html
+
+# Run Composer install if vendor is not included
+RUN composer install --no-dev --optimize-autoloader
 
 EXPOSE 80
