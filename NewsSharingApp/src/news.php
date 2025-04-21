@@ -8,7 +8,7 @@ use Aws\Exception\AwsException;
 
 // Set AWS credentials and region
 $s3 = new S3Client([
-    'region' => 'us-east-1',
+    'region' => getenv('REGION'),
     'version' => 'latest',
     'credentials' => [
         'key' => getenv('AWS_ACCESS_KEY_ID'),
@@ -142,7 +142,7 @@ function viewStories($pdo) {
 
         if (!empty($story['HasMedia']) && $story['HasMedia']) {
             $s3 = new S3Client([
-                'region' => 'us-east-1',
+                'region' => getenv('REGION'),
                 'version' => 'latest',
                 'credentials' => [
                     'key' => getenv('AWS_ACCESS_KEY_ID'),
@@ -169,20 +169,37 @@ function viewStories($pdo) {
         }
 
         if($story['Link'] != ''){
-            $link = "https://" . $story['Link'];
+            $link = $story['Link'];
         }
         else{
             $link = '';
         }
-        printf("<li><strong>Title:</strong> %s <br><strong>Body:</strong> %s <br><strong>Author:</strong> %s <br><strong>Link:</strong> <a href='%s'>%s</a> <br><strong>Genre:</strong> %s <br>%s</li><hr>",
+
+        $suggestedTitle = '';
+
+        $genre = $story['Genre'];
+        $currentID = $story['StoryID'];
+
+        // Fetch a random other story from the same genre
+        $stmtSuggest = $pdo->prepare("SELECT Title FROM Stories WHERE Genre = ? AND StoryID != ? ORDER BY RAND() LIMIT 1");
+        if ($stmtSuggest->execute([$genre, $currentID])) {
+            $suggested = $stmtSuggest->fetch(PDO::FETCH_ASSOC);
+            if ($suggested) {
+                $suggestedTitle = "<strong>Suggested Story:</strong> " . htmlspecialchars($suggested['Title']) . "<br>";
+            }
+        }
+
+        printf("<li><strong>Title:</strong> %s <br><strong>Body:</strong> %s <br><strong>Author:</strong> %s <br><strong>Link:</strong> <a href='%s'>%s</a> <br><strong>Genre:</strong> %s <br>%s%s</li><hr>",
             htmlspecialchars($story['Title']),
             htmlspecialchars($story['Body']),
             htmlspecialchars($story['Username']),
             htmlspecialchars($link),
             htmlspecialchars($story['Link']),
             htmlspecialchars($story['Genre']),
-            $imageHtml 
+            $imageHtml,
+            $suggestedTitle
         );
+
 
 
         $username = $_SESSION['username'];
