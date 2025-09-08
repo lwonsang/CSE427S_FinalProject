@@ -1,6 +1,9 @@
-CSE427S_FinalProject
+**CSE427S_FinalProject**
 
-Link to original site: http://ec2-3-136-83-96.us-east-2.compute.amazonaws.com/~leew1488/cse427_finalproject/news.php
+Link to Demo Video: https://drive.google.com/file/d/17kQx_aC1wWD276SvXpU8RX3oEjq9unuT/view?usp=sharing
+
+<img width="512" height="251" alt="unnamed" src="https://github.com/user-attachments/assets/6259cc0f-0863-4343-b3a2-8d08f25eb8fa" />
+
 
 
 To run the site, pull these Docker images - 
